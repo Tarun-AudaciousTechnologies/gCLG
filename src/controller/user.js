@@ -44,8 +44,12 @@ const addUser = async (req, res) => {
 
 const deleteUserByAdmin = async (req, res) => {
     try {
+        const {_id} = req.userData
         const {id} = req.params;
-        const data = await userModel.findById({_id:id});
+        const data = await userModel.findById({_id:id})
+        if(_id==id || data.userType=='admin'){
+          return res.status(400).json({message:"Sorry you can not delete your ID and any admin ID"})
+        }
         await userModel.deleteOne({_id:id});
         return res.status(200).json({message: "Account deleted successfully"});
     } catch (error) {
@@ -55,10 +59,17 @@ const deleteUserByAdmin = async (req, res) => {
 
 const deleteUser = async (req, res) => {
     try {
-        const {_id} = req.userData;
-        const data = await userModel.findByIdAndDelete({_id:id});
+        const {_id} = req.userData
+        const data = await userModel.findById({_id:_id})
+        console.log(data);
+        if(data.userType=='admin'){
+          console.log(data);
+          return res.status(400).json({message:"Sorry you are not allowed for this function"});
+        }
+        await userModel.deleteOne({_id:_id});
         return res.status(200).json({message: "User deleted successfully"});
     } catch (error) {
+        console.log(error,"errors")
         return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR)
     }
 }
@@ -67,7 +78,11 @@ const userDetail = async (req, res) => {
     try {
         const { search = '', fromDate, toDate, field, sortBy } = req.query
         const {offset, limits} = pagination.paginationData(req.query)
-        let condition = {}
+        let condition = {
+          userType: {
+            $ne: 'superAdmin',
+          },
+        }
         if (search) {
           condition.$or = [
             {
@@ -83,14 +98,15 @@ const userDetail = async (req, res) => {
                   search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&', 'i'),
                 ),
               },
+            },
+            {
+              userType: {
+                $regex: new RegExp(
+                  search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&', 'i'),
+                ),
+              },
             }
           ]
-        }
-        if (fromDate && toDate) {
-          condition.joiningDate = {
-            $gte: new Date(moment.utc(fromDate).startOf('day').format()),
-            $lte: new Date(moment.utc(toDate).endOf('day').format()),
-          }
         }
         if(sortBy){
             var sort = {[field]: parseInt(sortBy)}
@@ -100,9 +116,9 @@ const userDetail = async (req, res) => {
         const data = await userModel.aggregate([
           { $match: condition },
           { $unset: 'password' },
+          { $sort: sort},
           { $limit : limits },
           { $skip : offset },
-          { $sort: sort},
         ])
         return res.status(200).json({message: "Data fetched successfully", data});
     } catch (error) {

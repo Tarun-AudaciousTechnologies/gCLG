@@ -6,13 +6,13 @@ const { userAccess, auth } = require("../middleware");
 router.post("/", userController.addUser);
 
 router.delete(
-  "/",
+  "/:id",
   auth.verifyToken,
   userAccess.verifyUserAccess,
   userController.deleteUserByAdmin
 );
 
-router.delete("/selfDelete", auth.verifyToken, userController.deleteUser);
+router.delete("/selfDelete", auth.verifyToken, userController.deleteUser)
 
 router.get(
   "/",
