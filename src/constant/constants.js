@@ -19,13 +19,9 @@ module.exports = Object.freeze({
     DETAILS_FOUND: 'Details found successfully',
     SUCCESSFULLY_DELETED: 'Successfully  deleted',
     SUCCESSFULLY_ADDED: 'Successfully added',
-    SUPER_ADMIN_NOT_VALID: 'Super admin not valid',
-    OLD_PASSWORD_NOT_MATCH: 'Old password not match',
     CONFIRMPASSWORD_NOT_MATCH: 'Confirm password not match',
     UPDATE_PASSWORD: 'Password changed successfully',
     INVALID_ID: 'Invalid id',
-    ROLE: 'Admin',
-    SERVICE_CREATED: 'Service created successfully',
     FORGETPASSWORD_LINK: 'Forget password link',
     EMAIL_SEND: 'Email send successfully',
     EMAIL_SUBJECT: 'Your account has been created',
@@ -33,8 +29,7 @@ module.exports = Object.freeze({
     INVALID_TOKEN: 'Token not found',
     USER_VERIFY: 'User verify',
     NOT_VERIFY: 'User not verify',
-    UPDATE_STATUS_TRUE: 'True',
-    UPDATE_TOKEN: 'Null',
-    UPDATE_STATUS_FALSE: 'False',
-    NOT_ACCESS: 'Sorry, you do not have access'
+    NOT_ACCESS: 'Sorry, you do not have access',
+    COMPLAINT_ACCEPTED: 'Email for complaint approved',
+    COMPLAINT_REJECTED: 'Email for complaint rejected'
 })

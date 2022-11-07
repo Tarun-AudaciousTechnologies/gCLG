@@ -2,9 +2,10 @@ const { complaintsModel, userModel } = require("../models");
 const { pagination } = require("../helper");
 const mongoose = require("mongoose");
 const tesseract = require("node-tesseract-ocr");
-const { config } = require("dotenv");
 const path = require("path");
 const fs = require("fs");
+const handlebar = require("handlebars")
+const {emailTemplate}  = require("../helper")
 const { errorHandler } = require("../helper/responseHandler");
 const { allStatus, allConstants } = require("../constant");
 const Handlebars = require("handlebars");
@@ -15,43 +16,32 @@ const addComplaint = async (req, res) => {
     const { complaintType, description, area, city } = req.body;
     const { _id } = req.userData;
     const fileData = req.files;
+    const panCard = fileData.panCard.map((item) => {
+      return item.path;
+    });
+    const panCardFileName = fileData.panCard.map((item) => {
+      return item.filename;
+    });
+    const images = fileData.images.map((item) => {
+      return item.filename;
+    });
     const config = {
       lang: "hin+eng",
       oem: 1,
       psm: 3,
     };
-    if(!fileData.panCard){
-      return res.status(404).json({message: "pan card is required"});
+    for(let i=0;i<panCard.length;i++){
+      var a
+      await tesseract.recognize(panCard[i].toString(), config)
+      .then((text) => {
+        a+=text;
+      })
+      .catch((error) => {
+        console.log(error);
+      })
     }
-    if(!fileData.images){
-      return res.status(404).json({message: "images is required"});
-    }
-    const panCard = fileData.panCard.map((item) => {
-      return item.path;
-    });
-    tesseract.recognize(panCard.toString(), config).then(async (text) => {
-      const findtext = text.toLowerCase().includes("abhishek" || "इन्दौर");
-      if (findtext != true) {
-        fileData.panCard.map(async (ind) => {
-          const url = path.resolve("uploads", ind.filename);
-          fs.unlinkSync(url);
-        });
-        fileData.images.map(async (ind) => {
-          const url = path.resolve("uploads", ind.filename);
-          fs.unlinkSync(url);
-        });
-        return res
-          .status(200)
-          .json({
-            message: "Sorry this site is only for the citizen of Indore",
-          });
-      }
-      const panCardFileName = fileData.panCard.map((item) => {
-        return item.filename;
-      });
-      const images = fileData.images.map((item) => {
-        return item.filename;
-      });
+    const data = a.toLowerCase().includes("indore" || "इन्दौर")
+    if(data){
       await complaintsModel.create({
         requestedBy: _id,
         complaintType,
@@ -62,7 +52,24 @@ const addComplaint = async (req, res) => {
         description,
       });
       return res.status(404).json({ message: "Complaint added successfully" });
-    });
+    }
+    else{
+      const panImage = [fileData.panCard].flat();
+      panImage.map(async (ind) => {
+        const url = path.resolve("uploads", ind.filename);
+        fs.unlinkSync(url);
+      });
+      const complaintImage = [fileData.images].flat();
+      complaintImage.map(async (ind) => {
+        const url = path.resolve("uploads", ind.filename);
+        fs.unlinkSync(url);
+      });
+      return res
+        .status(200)
+        .json({
+        message: "Sorry this site is only for the citizen of Indore",
+      });
+    }
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -150,7 +157,7 @@ const deleteComplaint = async (req, res) => {
 const statusUpdate = async (req, res) => {
   try {
     const {id} = req.params;
-    const { status, leaveStatusDescription} = req.body
+    const { status, complaintDescription} = req.body
     let subject
     if(status == 'approved'){
       await complaintsModel.findByIdAndUpdate({_id: id},{
@@ -166,13 +173,13 @@ const statusUpdate = async (req, res) => {
       })
       const userData = await userModel.findById({_id: data.requestedBy})
       const htmlRequest = await fs.readFileSync(
-        `${__dirname}/../emailTemplate/rejectLeave.html`,
+        `${__dirname}/../emailTemplates/rejectLeave.html`,
         'utf8',
       )
       const template = Handlebars.compile(htmlRequest)
       const replacements = {
         name: userData.name,
-        LeaveStatusDescription: leaveStatusDescription,
+        complaintDescription: complaintDescription,
         email: userData.email,
       }
       const htmlToSend = template(replacements)
@@ -184,7 +191,7 @@ const statusUpdate = async (req, res) => {
         attachments: [
           {
             filename: 'logo.png',
-            path: __dirname + `/../emailTemplate/logoblue.png`,
+            path: __dirname + `/../emailTemplates/logoblue.png`,
             cid: 'logo',
           },
         ],

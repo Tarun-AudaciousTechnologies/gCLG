@@ -34,31 +34,6 @@ const addUser = async (req, res) => {
             street_address,
             city
         },])
-        const htmlRequest = await fs.readFileSync(
-          `${__dirname}/../emailTemplate/addUser.html`,
-          'utf8',
-        )
-        const template = Handlebars.compile(htmlRequest)
-        const replacements = {
-          name,
-          password: password,
-          email,
-        }
-        const htmlToSend = template(replacements)
-        const options = {
-          from: process.env.USER_NAME,
-          to: email,
-          subject: allConstants.EMAIL_SUBJECT,
-          html: htmlToSend,
-          attachments: [
-            {
-              filename: 'logo.png',
-              path: __dirname + `/../emailTemplate/logoblue.png`,
-              cid: 'logo',
-            },
-          ],
-        }
-        await emailHelper.sendMail(options)
         return res.status(201).json({message: "User Added Successfully"});
     } catch (error) {
         console.log(error);
