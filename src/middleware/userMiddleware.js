@@ -3,8 +3,8 @@ const { allConstants } = require('../constant')
 const verifyUserAccess = async ( req, res, next ) => {
     try {
         let access = false
-        const user = req.userData
-        if(user.userType == 'admin' || user.userType == 'superAdmin'){
+        const {userType} = req.userData
+        if(userType == 'admin' || userType == 'superAdmin'){
             access = true
             next()
         }

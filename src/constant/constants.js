@@ -28,6 +28,8 @@ module.exports = Object.freeze({
     SERVICE_CREATED: 'Service created successfully',
     FORGETPASSWORD_LINK: 'Forget password link',
     EMAIL_SEND: 'Email send successfully',
+    EMAIL_SUBJECT: 'Your account has been created',
+    EMAIL_REJECTION: 'Your complaint has been rejected',
     INVALID_TOKEN: 'Token not found',
     USER_VERIFY: 'User verify',
     NOT_VERIFY: 'User not verify',

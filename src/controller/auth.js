@@ -21,7 +21,8 @@ const login = async (req, res) => {
             return errorHandler(res, allStatus.NOT_FOUND, allConstants.LOGIN_PASSWORD_ERR);
         }
         return successHandler(res, allStatus.OK, allConstants.LOGIN_SUCCESS_MSG, {
-            token: generateToken(data)
+            token: generateToken(data),
+            data
         });
     } catch (error) {
         console.log(error);

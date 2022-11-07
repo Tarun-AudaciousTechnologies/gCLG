@@ -1,4 +1,4 @@
-const { complaintsModel } = require("../models");
+const { complaintsModel, userModel } = require("../models");
 const { pagination } = require("../helper");
 const mongoose = require("mongoose");
 const tesseract = require("node-tesseract-ocr");
@@ -7,30 +7,36 @@ const path = require("path");
 const fs = require("fs");
 const { errorHandler } = require("../helper/responseHandler");
 const { allStatus, allConstants } = require("../constant");
+const Handlebars = require("handlebars");
+const {emailHelper} = require("../helper");
 
 const addComplaint = async (req, res) => {
   try {
-    const { complaintType, description } = req.body;
+    const { complaintType, description, area, city } = req.body;
     const { _id } = req.userData;
     const fileData = req.files;
     const config = {
-      lang: "eng",
+      lang: "hin+eng",
       oem: 1,
       psm: 3,
     };
+    if(!fileData.panCard){
+      return res.status(404).json({message: "pan card is required"});
+    }
+    if(!fileData.images){
+      return res.status(404).json({message: "images is required"});
+    }
     const panCard = fileData.panCard.map((item) => {
       return item.path;
     });
     tesseract.recognize(panCard.toString(), config).then(async (text) => {
-      const findtext = text.includes("ABHISHEK");
+      const findtext = text.toLowerCase().includes("abhishek" || "इन्दौर");
       if (findtext != true) {
-        const panImage = [fileData.panCard].flat();
-        panImage.map(async (ind) => {
+        fileData.panCard.map(async (ind) => {
           const url = path.resolve("uploads", ind.filename);
           fs.unlinkSync(url);
         });
-        const complaintImage = [fileData.images].flat();
-        complaintImage.map(async (ind) => {
+        fileData.images.map(async (ind) => {
           const url = path.resolve("uploads", ind.filename);
           fs.unlinkSync(url);
         });
@@ -51,6 +57,8 @@ const addComplaint = async (req, res) => {
         complaintType,
         panCard: panCardFileName.toString(),
         images,
+        city,
+        area,
         description,
       });
       return res.status(404).json({ message: "Complaint added successfully" });
@@ -131,8 +139,7 @@ const allComplaints = async (req, res) => {
 const deleteComplaint = async (req, res) => {
   try {
     const { id } = req.params;
-    const data = await complaintsModel.findById({ _id: id });
-    await complaintsModel.deleteOne({ _id: id });
+    await complaintsModel.findByIdAndDelete({ _id: id });
     return res.status(200).json({ message: "complaint deleted" });
   } catch (error) {
     console.log(error);
@@ -143,14 +150,50 @@ const deleteComplaint = async (req, res) => {
 const statusUpdate = async (req, res) => {
   try {
     const {id} = req.params;
-    const { status} = req.body
-    await complaintsModel.findByIdAndUpdate({_id: _id},{
-      $set: {
-        status
+    const { status, leaveStatusDescription} = req.body
+    let subject
+    if(status == 'approved'){
+      await complaintsModel.findByIdAndUpdate({_id: id},{
+        $set: {
+          status
+        }
+      })
+    }else {
+      var data = await complaintsModel.findByIdAndUpdate({_id: id},{
+        $set: {
+          status
+        }
+      })
+      const userData = await userModel.findById({_id: data.requestedBy})
+      const htmlRequest = await fs.readFileSync(
+        `${__dirname}/../emailTemplate/rejectLeave.html`,
+        'utf8',
+      )
+      const template = Handlebars.compile(htmlRequest)
+      const replacements = {
+        name: userData.name,
+        LeaveStatusDescription: leaveStatusDescription,
+        email: userData.email,
       }
-    })
-    return res.status(200).json({message: "status update successfully"});
+      const htmlToSend = template(replacements)
+      const options = {
+        from: process.env.USER_NAME,
+        to: userData.email,
+        subject: allConstants.EMAIL_REJECTION,
+        html: htmlToSend,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: __dirname + `/../emailTemplate/logoblue.png`,
+            cid: 'logo',
+          },
+        ],
+      }
+      await emailHelper.sendMail(options)
+    }
+    return res.status(200).json({message: "status update successfully", status: status});
   } catch (error) {
+    console.log(error);
     return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR)
   }
 };

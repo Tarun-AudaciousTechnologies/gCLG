@@ -6,6 +6,12 @@ const complaintSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'user'
     },
+    area: {
+        type: Schema.Types.String
+    },
+    city: {
+        type: Schema.Types.String
+    }, 
     complaintType: {
         type: Schema.Types.String,
         enum: ['electricity','water','garbage','road']

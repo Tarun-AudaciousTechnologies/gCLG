@@ -3,6 +3,7 @@ const router = express.Router();
 const { complaintController } = require("../controller");
 const { uploadImage } = require("../helper");
 const { complaintAccess } = require("../middleware");
+const {valid, complaintValidation} = require("../validation")
 
 router.post(
   "/",
@@ -10,6 +11,8 @@ router.post(
     { name: "panCard", maxCount: 1 },
     { name: "images", maxCount: 10 },
   ]),
+  complaintValidation.compalintValidation,
+  valid.validate,
   complaintController.addComplaint
 );
 
@@ -24,7 +27,7 @@ router.get(
 router.get("/myComplaints", complaintController.getComplaint);
 
 router.put(
-  "/",
+  "/:id",
   complaintAccess.verifyComplaintAccess,
   complaintController.statusUpdate
 );

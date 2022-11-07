@@ -3,6 +3,9 @@ const bcrypt = require("bcrypt");
 const { errorHandler } = require("../helper/responseHandler");
 const { allStatus, allConstants } = require("../constant");
 const {pagination} = require("../helper")
+const fs = require("fs")
+const Handlebars = require("handlebars");
+const {emailHelper} = require("../helper")
 
 const addUser = async (req, res) => {
     try {
@@ -14,12 +17,9 @@ const addUser = async (req, res) => {
             phone,
             street_address,
             city,
-            userType
         } = req.body 
+        console.log(name,age,phone);
         const data = await userModel.findOne({email});
-        if(data){
-            return res.status(404).json({message: "email already present"});
-        }
         if(city!='Indore'){
             return res.status(404).json({message: "Sorry this site is only for Indori's"});
         }
@@ -29,12 +29,36 @@ const addUser = async (req, res) => {
             name,
             age,
             email,
-            userType,
             password: hashPassword,
             phone,
             street_address,
             city
         },])
+        const htmlRequest = await fs.readFileSync(
+          `${__dirname}/../emailTemplate/addUser.html`,
+          'utf8',
+        )
+        const template = Handlebars.compile(htmlRequest)
+        const replacements = {
+          name,
+          password: password,
+          email,
+        }
+        const htmlToSend = template(replacements)
+        const options = {
+          from: process.env.USER_NAME,
+          to: email,
+          subject: allConstants.EMAIL_SUBJECT,
+          html: htmlToSend,
+          attachments: [
+            {
+              filename: 'logo.png',
+              path: __dirname + `/../emailTemplate/logoblue.png`,
+              cid: 'logo',
+            },
+          ],
+        }
+        await emailHelper.sendMail(options)
         return res.status(201).json({message: "User Added Successfully"});
     } catch (error) {
         console.log(error);
@@ -42,9 +66,75 @@ const addUser = async (req, res) => {
     }
 }
 
+const addAdmin = async (req, res) => {
+  try {
+    const {
+      name,
+      age,
+      email,
+      password,
+      phone,
+      street_address,
+      city,
+      userType
+    } = req.body
+    const {_id} = req.userData;
+    const user = await userModel.findOne({email});
+    if(user){
+      return res.status(400).json({message: "email already present"});
+    }
+    const data = await userModel.findById({_id:_id});
+    if(data.userType=='superAdmin'){
+      let salt = await bcrypt.genSaltSync(10)
+      const hashPassword = await bcrypt.hash(password, salt)
+      await userModel.create([{
+          name,
+          age,
+          email,
+          userType,
+          password: hashPassword,
+          phone,
+          street_address,
+          city
+      },])
+      const htmlRequest = await fs.readFileSync(
+        `${__dirname}/../emailTemplate/addUser.html`,
+        'utf8',
+      )
+      const template = Handlebars.compile(htmlRequest)
+      const replacements = {
+        name,
+        password: password,
+        email,
+      }
+      const htmlToSend = template(replacements)
+      const options = {
+        from: process.env.USER_NAME,
+        to: email,
+        subject: allConstants.EMAIL_SUBJECT,
+        html: htmlToSend,
+        attachments: [
+          {
+            filename: 'logo.png',
+            path: __dirname + `/../emailTemplate/logoblue.png`,
+            cid: 'logo',
+          },
+        ],
+      }
+      await emailHelper.sendMail(options)
+      return res.status(201).json({message: "Admin Added Successfully"});
+    }
+    return res.status(400).json({message: "Only superamdin can add admin"})
+  } catch (error) {
+    console.log(error)
+    return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR);
+  }
+}
+
 const deleteUserByAdmin = async (req, res) => {
     try {
         const {_id} = req.userData
+        console.log(req.userData);
         const {id} = req.params;
         const data = await userModel.findById({_id:id})
         if(_id==id || data.userType=='admin'){
@@ -53,25 +143,20 @@ const deleteUserByAdmin = async (req, res) => {
         await userModel.deleteOne({_id:id});
         return res.status(200).json({message: "Account deleted successfully"});
     } catch (error) {
-        return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR)      
+        console.log(error);
+        return errorHandler(res, allStatus.NOT_FOUND, allConstants.INTERNAL_SERVER_ERROR, error)      
     }
 }
 
-const deleteUser = async (req, res) => {
-    try {
-        const {_id} = req.userData
-        const data = await userModel.findById({_id:_id})
-        console.log(data);
-        if(data.userType=='admin'){
-          console.log(data);
-          return res.status(400).json({message:"Sorry you are not allowed for this function"});
-        }
-        await userModel.deleteOne({_id:_id});
-        return res.status(200).json({message: "User deleted successfully"});
-    } catch (error) {
-        console.log(error,"errors")
-        return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR)
-    }
+const deleteById = async (req, res) => {
+  try {
+    const {_id} = req.userData
+    await userModel.findOneAndDelete({_id:_id});
+    return res.status(200).json({message: "Account deleted successfully"});
+  } catch (error) {
+    console.log(error);
+    return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR);
+  }
 }
 
 const userDetail = async (req, res) => {
@@ -139,7 +224,8 @@ const getUserById = async (req, res) => {
 module.exports = {
     addUser,
     deleteUserByAdmin,
-    deleteUser,
+    deleteById,
     userDetail,
-    getUserById
+    getUserById,
+    addAdmin
 }

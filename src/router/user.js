@@ -2,17 +2,18 @@ const express = require("express");
 const router = express.Router();
 const { userController } = require("../controller");
 const { userAccess, auth } = require("../middleware");
+const {valid, userValidation} = require("../validation")
 
-router.post("/", userController.addUser);
+router.post("/",userValidation.signUpValidation, valid.validate, userController.addUser);
 
 router.delete(
-  "/:id",
-  auth.verifyToken,
+  "/delete/:id",
+  auth.verifyToken, 
   userAccess.verifyUserAccess,
   userController.deleteUserByAdmin
 );
 
-router.delete("/selfDelete", auth.verifyToken, userController.deleteUser)
+router.delete("/deleteYourId", auth.verifyToken, userController.deleteById);
 
 router.get(
   "/",
@@ -22,5 +23,7 @@ router.get(
 );
 
 router.get("/detail", auth.verifyToken, userController.getUserById);
+
+router.post("/addAdmin", auth.verifyToken, userController.addAdmin);
 
 module.exports = router;
