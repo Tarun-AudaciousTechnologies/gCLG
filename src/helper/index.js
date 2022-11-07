@@ -1,4 +1,5 @@
 module.exports = {
     uploadImage: require("./imageUpload"),
-    pagination: require("./pagination")
+    pagination: require("./pagination"),
+    emailTemplate: require("./email")
 }

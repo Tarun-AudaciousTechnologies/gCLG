@@ -1,10 +1,11 @@
-const { complaintsModel } = require("../models");
+const { complaintsModel, userModel } = require("../models");
 const { pagination } = require("../helper");
 const mongoose = require("mongoose");
 const tesseract = require("node-tesseract-ocr");
-const { config } = require("dotenv");
 const path = require("path");
 const fs = require("fs");
+const handlebar = require("handlebars")
+const {emailTemplate}  = require("../helper")
 const { errorHandler } = require("../helper/responseHandler");
 const { allStatus, allConstants } = require("../constant");
 
@@ -13,39 +14,32 @@ const addComplaint = async (req, res) => {
     const { complaintType, description } = req.body;
     const { _id } = req.userData;
     const fileData = req.files;
-    const config = {
-      lang: "eng",
-      oem: 1,
-      psm: 3,
-    };
     const panCard = fileData.panCard.map((item) => {
       return item.path;
     });
-    tesseract.recognize(panCard.toString(), config).then(async (text) => {
-      const findtext = text.includes("ABHISHEK");
-      if (findtext != true) {
-        const panImage = [fileData.panCard].flat();
-        panImage.map(async (ind) => {
-          const url = path.resolve("uploads", ind.filename);
-          fs.unlinkSync(url);
-        });
-        const complaintImage = [fileData.images].flat();
-        complaintImage.map(async (ind) => {
-          const url = path.resolve("uploads", ind.filename);
-          fs.unlinkSync(url);
-        });
-        return res
-          .status(200)
-          .json({
-            message: "Sorry this site is only for the citizen of Indore",
-          });
-      }
-      const panCardFileName = fileData.panCard.map((item) => {
-        return item.filename;
-      });
-      const images = fileData.images.map((item) => {
-        return item.filename;
-      });
+    const panCardFileName = fileData.panCard.map((item) => {
+      return item.filename;
+    });
+    const images = fileData.images.map((item) => {
+      return item.filename;
+    });
+    const config = {
+      lang: "hin+eng",
+      oem: 1,
+      psm: 3,
+    };
+    for(let i=0;i<panCard.length;i++){
+      var a
+      await tesseract.recognize(panCard[i].toString(), config)
+      .then((text) => {
+        a+=text;
+      })
+      .catch((error) => {
+        console.log(error);
+      })
+    }
+    const data = a.includes("Welcome")
+    if(data){
       await complaintsModel.create({
         requestedBy: _id,
         complaintType,
@@ -54,7 +48,24 @@ const addComplaint = async (req, res) => {
         description,
       });
       return res.status(404).json({ message: "Complaint added successfully" });
-    });
+    }
+    else{
+      const panImage = [fileData.panCard].flat();
+      panImage.map(async (ind) => {
+        const url = path.resolve("uploads", ind.filename);
+        fs.unlinkSync(url);
+      });
+      const complaintImage = [fileData.images].flat();
+      complaintImage.map(async (ind) => {
+        const url = path.resolve("uploads", ind.filename);
+        fs.unlinkSync(url);
+      });
+      return res
+        .status(200)
+        .json({
+        message: "Sorry this site is only for the citizen of Indore",
+      });
+    }
   } catch (error) {
     console.log(error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -131,8 +142,7 @@ const allComplaints = async (req, res) => {
 const deleteComplaint = async (req, res) => {
   try {
     const { id } = req.params;
-    const data = await complaintsModel.findById({ _id: id });
-    await complaintsModel.deleteOne({ _id: id });
+    await complaintsModel.findByIdAndDelete({ _id: id });
     return res.status(200).json({ message: "complaint deleted" });
   } catch (error) {
     console.log(error);
@@ -143,14 +153,59 @@ const deleteComplaint = async (req, res) => {
 const statusUpdate = async (req, res) => {
   try {
     const {id} = req.params;
-    const { status} = req.body
-    await complaintsModel.findByIdAndUpdate({_id: _id},{
-      $set: {
-        status
-      }
-    })
+    const { status, complaintDescription} = req.body
+    console.log(status,complaintDescription);
+    if(status == 'approved'){
+      var subject = allConstants.COMPLAINT_ACCEPTED
+      var data = await complaintsModel.findByIdAndUpdate({_id: id},{
+        $set: {
+          status
+        }
+      },{
+        upsert: true,
+        new: true
+      })
+    }
+    else{
+      var subject = allConstants.COMPLAINT_ACCEPTED
+      var data = await complaintsModel.findByIdAndUpdate({_id: _id},{
+        $set: {
+          status
+        }
+      },{
+        upsert: true,
+        new: true
+      })
+    }
+    const userDetail = await userModel.findById({_id: data.requestedBy});
+    const htmlRequest = await fs.readFileSync(
+      `${__dirname}/../emailTemplates/complaint.html`,
+      'utf8',
+    )
+    const template = handlebar.compile(htmlRequest);
+    const replacement = {
+      name: userDetail.name,
+      complaintDescription: complaintDescription,
+      email: userDetail.email
+    }
+    const htmlToSend = template(replacement)
+    const options = {
+      from: process.env.USER_NAME,
+      to: userDetail.email,
+      subject: subject,
+      html: htmlToSend,
+      attachments: [
+        {
+          filename: 'logo.png',
+          path: __dirname + `/../emailTemplates/logoblue.png`,
+          cid: 'logo',
+        },
+      ],
+    }
+    await emailTemplate.sendMail(options)
     return res.status(200).json({message: "status update successfully"});
   } catch (error) {
+    console.log(error);
     return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR)
   }
 };
