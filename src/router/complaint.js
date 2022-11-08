@@ -16,7 +16,7 @@ router.post(
   complaintController.addComplaint
 );
 
-router.delete("/:id", complaintController.deleteComplaint);
+router.delete("/:id", auth.verifyToken, complaintController.deleteComplaint);
 
 router.get(
   "/",

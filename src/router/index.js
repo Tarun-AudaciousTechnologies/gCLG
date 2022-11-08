@@ -8,4 +8,8 @@ router.use("/auth", require("./auth"));
 
 router.use("/user", require("./user"));
 
+router.use("/contactUs", require("./contactUs"));
+
+router.use("/faq", require("./faq"));
+
 module.exports = router;

@@ -14,7 +14,7 @@ const complaintSchema = new Schema({
     }, 
     complaintType: {
         type: Schema.Types.String,
-        enum: ['electricity','water','garbage','road']
+        enum: ['electricity','water','garbage','road','Government School']
     },
     images: {
         type: Schema.Types.Array

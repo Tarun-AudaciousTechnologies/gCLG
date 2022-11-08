@@ -18,7 +18,6 @@ const addUser = async (req, res) => {
             street_address,
             city,
         } = req.body 
-        console.log(name,age,phone);
         const data = await userModel.findOne({email});
         if(city!='Indore'){
             return res.status(404).json({message: "Sorry this site is only for Indori's"});
@@ -109,7 +108,6 @@ const addAdmin = async (req, res) => {
 const deleteUserByAdmin = async (req, res) => {
     try {
         const {_id} = req.userData
-        console.log(req.userData);
         const {id} = req.params;
         const data = await userModel.findById({_id:id})
         if(_id==id || data.userType=='admin'){
@@ -136,7 +134,7 @@ const deleteById = async (req, res) => {
 
 const userDetail = async (req, res) => {
     try {
-        const { search = '', fromDate, toDate, field, sortBy } = req.query
+        const { search = '', field, sortBy } = req.query
         const {offset, limits} = pagination.paginationData(req.query)
         let condition = {
           userType: {
@@ -196,11 +194,65 @@ const getUserById = async (req, res) => {
     }
 }
 
+const forgetPassword = async (req, res) => {
+  try {
+    const {_id} = req.userData;
+    const {newPassword, confirmPassword} = req.body;
+    if(confirmPassword != newPassword){
+      return res.status(400).json({message: "confirmPassword doesn't match"});
+    }
+    let salt = await bcrypt.genSaltSync(10)
+    const hashPassword = await bcrypt.hash(newPassword, salt)
+    await userModel.findByIdAndUpdate({_id:_id},{
+      $set:{
+        password: hashPassword
+      }
+    })
+    return res.status(200).json({message: "Password changed successfully"});
+  } catch (error) {
+    console.log(error)
+    return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR)
+  }
+}
+
+const updateDetail = async (req, res) => {
+  try {
+    const {
+      name,
+      age,
+      email,
+      phone,
+      street_address,
+      city,
+    } = req.body
+    const {_id} = req.userData;
+    const data = await userModel.findById({_id: _id});
+    if(!data){
+      return res.status(404).json({message: "User not found"});
+    }
+    await userModel.updateOne({_id: _id},{
+      $set: {
+        name,
+        age,
+        email,
+        phone,
+        street_address,
+        city,
+      }
+    })
+    return res.status(200).json({message: "updated successfully"});
+  } catch (error) {
+    return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.INTERNAL_SERVER_ERROR)
+  }
+}
+
 module.exports = {
     addUser,
     deleteUserByAdmin,
     deleteById,
     userDetail,
     getUserById,
-    addAdmin
+    addAdmin,
+    forgetPassword,
+    updateDetail
 }

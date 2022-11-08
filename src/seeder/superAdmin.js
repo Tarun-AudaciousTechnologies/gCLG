@@ -8,7 +8,7 @@ const superAdminSeed = async () => {
     try {
         let password = bcrypt.hashSync(superAdminJson.password, allConstants.ROUND);
         superAdminJson.password = password
-        const superAdminType = await userModel.find({});
+        const superAdminType = await userModel.find({userType: 'superAdmin'});
         if (superAdminType.length) {
             console.log(`Super admin is already added`);
             return false;

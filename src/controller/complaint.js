@@ -54,13 +54,11 @@ const addComplaint = async (req, res) => {
       return res.status(404).json({ message: "Complaint added successfully" });
     }
     else{
-      const panImage = [fileData.panCard].flat();
-      panImage.map(async (ind) => {
+      fileData.panImage.map(async (ind) => {
         const url = path.resolve("uploads", ind.filename);
         fs.unlinkSync(url);
       });
-      const complaintImage = [fileData.images].flat();
-      complaintImage.map(async (ind) => {
+      fileData.complaintImage.map(async (ind) => {
         const url = path.resolve("uploads", ind.filename);
         fs.unlinkSync(url);
       });
@@ -173,7 +171,7 @@ const statusUpdate = async (req, res) => {
       })
       const userData = await userModel.findById({_id: data.requestedBy})
       const htmlRequest = await fs.readFileSync(
-        `${__dirname}/../emailTemplates/rejectLeave.html`,
+        `${__dirname}/../emailTemplates/rejectComplain.html`,
         'utf8',
       )
       const template = Handlebars.compile(htmlRequest)
