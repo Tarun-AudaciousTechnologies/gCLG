@@ -4,6 +4,7 @@ const bodyParser = require("body-parser")
 const http = require('http')
 const path = require('path')
 require('dotenv').config();
+const cors = require("cors")
 const routes = require("./src/router")
 const {defaultDb} = require("./src/seeder")
 
@@ -12,6 +13,7 @@ const {defaultDb} = require("./src/seeder")
        await mongoose.connect(process.env.DB_URL, {});
        console.log('Successfully connected database')
        const app = express();
+       app.use(cors());
        app.use(bodyParser.urlencoded({extended: false}));
        app.use(bodyParser.json());
        await defaultDb();

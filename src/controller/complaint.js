@@ -40,6 +40,7 @@ const addComplaint = async (req, res) => {
         console.log(error);
       })
     }
+    console.log(a)
     const data = a.toLowerCase().includes("indore" || "इन्दौर")
     if(data){
       await complaintsModel.create({
@@ -54,11 +55,11 @@ const addComplaint = async (req, res) => {
       return res.status(404).json({ message: "Complaint added successfully" });
     }
     else{
-      fileData.panImage.map(async (ind) => {
+      fileData.panCard.map(async (ind) => {
         const url = path.resolve("uploads", ind.filename);
         fs.unlinkSync(url);
       });
-      fileData.complaintImage.map(async (ind) => {
+      fileData.images.map(async (ind) => {
         const url = path.resolve("uploads", ind.filename);
         fs.unlinkSync(url);
       });

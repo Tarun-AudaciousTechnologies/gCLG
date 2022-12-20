@@ -25,7 +25,7 @@ const login = async (req, res) => {
             data
         });
     } catch (error) {
-        console.log(error);
+        console.log(error,"sofsjios");
         return errorHandler(res, allStatus.INTERNAL_SERVER_ERROR, allConstants.ERR_MSG);
     };
 };
